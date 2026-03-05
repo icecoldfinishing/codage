@@ -1,0 +1,46 @@
+# Java
+*.class
+*.jar
+*.war
+*.ear
+
+# Maven
+/logs/
+/target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# IntelliJ IDEA
+*.iml
+.idea/
+out/
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Others
+*.log
+*.tmp
+
+# Database
+*.db
+*.sqlite
+
+# User-specific
+*.swp
+*.swo
+
+# Backup files
+*~
+*.bak
+
+# Node modules (if any)
+node_modules/
