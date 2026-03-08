@@ -1,3 +1,0 @@
-DROP DATABASE IF EXISTS dbase;
-CREATE DATABASE dbase;
-\c dbase;
