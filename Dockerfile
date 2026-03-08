@@ -8,7 +8,6 @@ WORKDIR /app
 COPY . .
 
 # On compile le projet
-RUN gcc -o codage main.c resolution.c
-
+RUN gcc -O2 -mavx2 -o codage main.c resolution.c
 # On dit au conteneur de lancer le programme à la fin
 CMD ["./codage"]
