@@ -2,14 +2,14 @@
 #include "resolution.h"
 
 int main() {
-    printf("=== Lancement du TD 1 ===\n\n");
+    // Ce printf DOIT s'afficher quoi qu'il arrive
+    printf("--- TEST DE LANCEMENT ---\n");
+    fflush(stdout); 
 
-    resoudre();
-    
-    printf("\n");
-    
-    // Exercice 1 : Octet 0xB2 (10110010) [cite: 38]
-    decoder_octet(0xB2);
+    conversion_octale_dynamique(0b110101001);
+    afficher_permissions();
+    analyser_octet_prefixe(0xB2);
+    encoder_message_huffman("ATEA");
 
     return 0;
 }
