@@ -9,13 +9,13 @@ int main() {
 
     // --- Exercice 0 : Conversion Octale ---
     // Convertit 110 101 001 (octal: 651)
-    conversion_octale_dynamique(0b110101001); 
+    conversion_octale(0b110101001); 
 
     // --- Exercice 1 : Décodage et Encodage ---
     // Décodage de 0xB2 (10110010)
-    analyser_octet_prefixe(0xB2);
+    decodage(0xB2);
     // Encodage selon le dictionnaire
-    encoder_message_huffman("ATEAN");
+    encodage("ATEAN");
 
     printf("--- TESTS SIMD (EXERCICES 2 & 3) ---\n");
 
@@ -27,7 +27,7 @@ int main() {
         tableau_B[i] = 30;     // Seuil fixe à 30
     }
 
-    resoudre_exercice_2_simd(tableau_A, tableau_B, resultat, 32);
+    simd(tableau_A, tableau_B, resultat, 32);
 
     printf("Resultat SIMD (A[i] > 30) : ");
     for(int i = 0; i < 32; i++) {

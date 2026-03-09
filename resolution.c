@@ -13,7 +13,7 @@ ReglePrefixe dictionnaire[] = {
 };
 int nb_regles = 4;
 
-void conversion_octale_dynamique(uint16_t binaire) {
+void conversion_octale(uint16_t binaire) {
     // Tableau pour stocker les chiffres octaux (max 6 chiffres pour 16 bits)
     int chiffres[6]; 
     int i = 0;
@@ -41,27 +41,21 @@ void conversion_octale_dynamique(uint16_t binaire) {
 
 
 
-void analyser_octet_prefixe(uint8_t data) {
+void decodage(uint8_t data) {
     printf("Exercice 1 : Decodage de 0x%02X\n", data);
-
     uint8_t registre = 0; // Accumulateur de bits
     int len = 0;          // Nombre de bits dans le registre
-
     printf("Sequence : ");
-    
     // Parcourt les bits de l'octet (de gauche à droite)
     for (int i = 7; i >= 0; i--) {
-        
         // Extrait le bit i et l'ajoute au registre
         uint8_t bit = (data >> i) & 1;
         registre = (registre << 1) | bit;
         len++;
-
         // Recherche une correspondance dans le dictionnaire
         for (int r = 0; r < nb_regles; r++) {
             if (len == dictionnaire[r].longueur && registre == dictionnaire[r].code) {
                 printf("%c ", dictionnaire[r].lettre);
-                
                 // Reset pour la lettre suivante
                 registre = 0;
                 len = 0;
@@ -72,29 +66,25 @@ void analyser_octet_prefixe(uint8_t data) {
     printf("\n\n");
 }
 
-void encoder_message_huffman(const char* message) {
+void encodage(const char* message) {
     printf("Exercice 1.3: Encodage dynamique de '%s'\n", message);
     uint8_t buffer = 0;
     int bits_utilises = 0;
-
     // On parcourt chaque lettre du message à encoder
     for (int i = 0; i < strlen(message); i++) {
         char lettre_cible = message[i];
         bool trouve = false;
-
         // On cherche la lettre dans le dictionnaire
         for (int r = 0; r < nb_regles; r++) {
             if (dictionnaire[r].lettre == lettre_cible) {
                 trouve = true;
                 uint8_t code = dictionnaire[r].code;
                 int len = dictionnaire[r].longueur;
-
                 // On insère les bits du code un par un dans le buffer
                 for (int b = len - 1; b >= 0; b--) {
                     uint8_t bit = (code >> b) & 1; // Extraction du bit
                     buffer = (buffer << 1) | bit;  // Insertion dans le buffer
                     bits_utilises++;
-
                     // Si le buffer est plein (8 bits), on l'affiche et on reset
                     if (bits_utilises == 8) {
                         printf("Octet genere : 0x%02X\n", buffer);
@@ -107,7 +97,6 @@ void encoder_message_huffman(const char* message) {
         }
         if (!trouve) printf("(Lettre '%c' inconnue du dictionnaire)\n", lettre_cible);
     }
-
     // Gestion du Padding : si le dernier octet n'est pas complet
     if (bits_utilises > 0) {
         // On décale les bits vers la gauche pour remplir l'octet (MSB align)
@@ -122,7 +111,7 @@ void encoder_message_huffman(const char* message) {
  * @details Remplace 32 itérations classiques par 1 seule comparaison vectorielle.
  * Res[i] = 0xFF si A[i] > B[i], sinon 0x00. [cite: 52, 53]
  */
-void resoudre_exercice_2_simd(const uint8_t* A, const uint8_t* B, uint8_t* Res, int n) {
+void simd(const uint8_t* A, const uint8_t* B, uint8_t* Res, int n) {
     // On traite les données par blocs de 32 octets (256 bits) [cite: 48, 55]
     for (int i = 0; i <= n - 32; i += 32) {
         
