@@ -15,7 +15,7 @@ int main() {
     // Décodage de 0xB2 (10110010)
     decodage(0xB2);
     // Encodage selon le dictionnaire
-    encodage("ATEAN");
+    encodage("ATEA");
 
     printf("--- TESTS SIMD (EXERCICES 2 & 3) ---\n");
 
@@ -29,7 +29,7 @@ int main() {
 
     simd(tableau_A, tableau_B, resultat, 32);
 
-    printf("Resultat SIMD (A[i] > 30) : ");
+    printf("Resultat SIMD: ");
     for(int i = 0; i < 32; i++) {
         // A[16] est le premier > 30 (16*2=32)
         if (i % 8 == 0) printf("\n  "); 
