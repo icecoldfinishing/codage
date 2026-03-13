@@ -23,6 +23,6 @@ void simd(const uint8_t* A, const uint8_t* B, uint8_t* Res, int n);
 
 // --- Exercice 3 : Recherche Rapide (Movemask) ---
 int localiser_premier_zero_simd(const uint8_t* ptr);
-void rechercher_caractere_simd(const uint8_t* ptr, uint8_t cible);
+int rechercher_caractere_simd(const uint8_t* ptr, uint8_t cible);
 
 #endif

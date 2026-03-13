@@ -149,7 +149,7 @@ int localiser_premier_zero_simd(const uint8_t* ptr) {
     return __builtin_ctz(mask); 
 }
 
-void rechercher_caractere_simd(const uint8_t* ptr, uint8_t cible) {
+int rechercher_caractere_simd(const uint8_t* ptr, uint8_t cible) {
     // Question 3.3 : On utilise _mm_set1_epi8 pour diffuser la cible [cite: 78, 79]
     __m128i target = _mm_set1_epi8(cible); 
     __m128i data = _mm_loadu_si128((const __m128i*)ptr);
@@ -157,4 +157,6 @@ void rechercher_caractere_simd(const uint8_t* ptr, uint8_t cible) {
     
     int mask = _mm_movemask_epi8(cmp);
     printf("Masque de recherche pour '%c' (0x%02X) : 0x%04X\n", cible, cible, mask);
+    if (mask == 0) return -1;
+    return __builtin_ctz(mask); // Index du premier match
 }

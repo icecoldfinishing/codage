@@ -44,7 +44,8 @@ int main() {
     printf("Exercice 3.2 : Premier '\\0' trouve a l'index : %d\n", index_zero);
 
     // Recherche d'un caractère arbitraire 'W' (0x57)
-    rechercher_caractere_simd(chaine, 'W');
+    int index_caractere = rechercher_caractere_simd(chaine, 'W');
+    printf("Caractere '%c' trouve a l'index : %d\n", 'W', index_caractere);
 
     return 0;
 }
