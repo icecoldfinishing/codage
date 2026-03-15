@@ -12,7 +12,7 @@ typedef struct {
 } ReglePrefixe;
 
 // --- Exercice 0 : Bases ---
-void conversion_octale(uint16_t binaire);
+void conversion_base(uint16_t valeur, uint8_t base);
 
 // --- Exercice 1 : Codage Variable ---
 void decodage(uint8_t data);

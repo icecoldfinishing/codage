@@ -7,9 +7,9 @@ int main() {
     printf("--- TEST DE LANCEMENT ---\n");
     fflush(stdout); 
 
-    // --- Exercice 0 : Conversion Octale ---
-    // Convertit 110 101 001 (octal: 651)
-    conversion_octale(0b110101001); 
+    // --- Exercice 0 : Conversion en base dynamique ---
+    // Convertit 110 101 001 en base 8 (resultat attendu: 651)
+    conversion_base(0b110101001, 8); 
 
     // --- Exercice 1 : Décodage et Encodage ---
     // Décodage de 0xB2 (10110010)

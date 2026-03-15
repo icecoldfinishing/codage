@@ -13,28 +13,31 @@ ReglePrefixe dictionnaire[] = {
 };
 int nb_regles = 4;
 
-void conversion_octale(uint16_t binaire) {
-    // Tableau pour stocker les chiffres octaux (max 6 chiffres pour 16 bits)
-    int chiffres[6]; 
+void conversion_base(uint16_t valeur, uint8_t base) {
+    // Max 16 chiffres pour un uint16_t en base 2
+    char chiffres[16];
     int i = 0;
-    printf("Conversion dynamique de 0b");
-    // Affichage binaire pour vérification
-    for (int b = 15; b >= 0; b--) printf("%d", (binaire >> b) & 1);
-    // BOUCLE DYNAMIQUE :
-    // Tant qu'il reste des bits à traiter
-    uint16_t temp = binaire;
-    while (temp > 0) {
-        // On isole les 3 bits de droite avec le masque 0x7 (111 en binaire)
-        chiffres[i] = temp & 0x7;
-        // On décale le nombre de 3 positions vers la droite pour passer au groupe suivant
-        temp = temp >> 3;
-        i++; // On passe à la case suivante du tableau
+    const char* alphabet = "0123456789ABCDEF";
+
+    if (base < 2 || base > 16) {
+        printf("Base invalide (%u). Utilisez une base entre 2 et 16.\n\n", base);
+        return;
     }
-    printf("\nResultat Octal: ");
-    // On affiche le tableau à l'envers (car on a extrait de droite à gauche)
-    if (i == 0) printf("0"); // Cas où le nombre vaut 0
+
+    printf("Conversion dynamique de 0b");
+    for (int b = 15; b >= 0; b--) printf("%d", (valeur >> b) & 1);
+
+    uint16_t temp = valeur;
+    while (temp > 0) {
+        chiffres[i] = alphabet[temp % base];
+        temp = temp / base;
+        i++;
+    }
+
+    printf("\nResultat base %u: ", base);
+    if (i == 0) printf("0");
     for (int j = i - 1; j >= 0; j--) {
-        printf("%d", chiffres[j]);
+        printf("%c", chiffres[j]);
     }
     printf("\n\n");
 }
