@@ -7,9 +7,9 @@ int main() {
     printf("--- TEST DE LANCEMENT ---\n");
     fflush(stdout); 
 
-    // --- Exercice 0 : Conversion Octale ---
-    // Convertit 110 101 001 (octal: 651)
-    conversion_octale(0b110101001); 
+    // --- Exercice 0 : Conversion en base dynamique ---
+    // Convertit 110 101 001 en base 8 (resultat attendu: 651)
+    conversion_base(0b110101001, 8); 
 
     // --- Exercice 1 : Décodage et Encodage ---
     // Décodage de 0xB2 (10110010)
@@ -44,7 +44,8 @@ int main() {
     printf("Exercice 3.2 : Premier '\\0' trouve a l'index : %d\n", index_zero);
 
     // Recherche d'un caractère arbitraire 'W' (0x57)
-    rechercher_caractere_simd(chaine, 'W');
+    int index_caractere = rechercher_caractere_simd(chaine, 'W');
+    printf("Caractere '%c' trouve a l'index : %d\n", 'W', index_caractere);
 
     return 0;
 }

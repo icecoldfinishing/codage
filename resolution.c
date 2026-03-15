@@ -13,28 +13,31 @@ ReglePrefixe dictionnaire[] = {
 };
 int nb_regles = 4;
 
-void conversion_octale(uint16_t binaire) {
-    // Tableau pour stocker les chiffres octaux (max 6 chiffres pour 16 bits)
-    int chiffres[6]; 
+void conversion_base(uint16_t valeur, uint8_t base) {
+    // Max 16 chiffres pour un uint16_t en base 2
+    char chiffres[16];
     int i = 0;
-    printf("Conversion octale");
-    // Affichage binaire pour vérification
-    for (int b = 15; b >= 0; b--) printf("%d", (binaire >> b) & 1);
-    // BOUCLE DYNAMIQUE :
-    // Tant qu'il reste des bits à traiter
-    uint16_t temp = binaire;
-    while (temp > 0) {
-        // On isole les 3 bits de droite avec le masque 0x7 (111 en binaire)
-        chiffres[i] = temp & 0x7;
-        // On décale le nombre de 3 positions vers la droite pour passer au groupe suivant
-        temp = temp >> 3;
-        i++; // On passe à la case suivante du tableau
+    const char* alphabet = "0123456789ABCDEF";
+
+    if (base < 2 || base > 16) {
+        printf("Base invalide (%u). Utilisez une base entre 2 et 16.\n\n", base);
+        return;
     }
-    printf("\nResultat Octal: ");
-    // On affiche le tableau à l'envers (car on a extrait de droite à gauche)
-    if (i == 0) printf("0"); // Cas où le nombre vaut 0
+
+    printf("Conversion dynamique de 0b");
+    for (int b = 15; b >= 0; b--) printf("%d", (valeur >> b) & 1);
+
+    uint16_t temp = valeur;
+    while (temp > 0) {
+        chiffres[i] = alphabet[temp % base];
+        temp = temp / base;
+        i++;
+    }
+
+    printf("\nResultat base %u: ", base);
+    if (i == 0) printf("0");
     for (int j = i - 1; j >= 0; j--) {
-        printf("%d", chiffres[j]);
+        printf("%c", chiffres[j]);
     }
     printf("\n\n");
 }
@@ -114,13 +117,16 @@ void encodage(const char* message) {
 void simd(const uint8_t* A, const uint8_t* B, uint8_t* Res, int n) {
     // On traite les données par blocs de 32 octets (256 bits) [cite: 48, 55]
     for (int i = 0; i <= n - 32; i += 32) {
+        
         // 1. Chargement des données (LOD)
         // On utilise _mm256_loadu_si256 pour éviter un crash si l'adresse n'est pas alignée sur 32 octets [cite: 59, 60]
         __m256i vecA = _mm256_loadu_si256((const __m256i*)&A[i]);
         __m256i vecB = _mm256_loadu_si256((const __m256i*)&B[i]);
+
         // 2. Comparaison Vectorielle (CMP)
         // L'instruction _mm256_cmpgt_epi8 effectue 32 comparaisons 'A[i] > B[i]' en parallèle 
         __m256i masque_resultat = _mm256_cmpgt_epi8(vecA, vecB);
+
         // 3. Stockage (STR)
         _mm256_storeu_si256((__m256i*)&Res[i], masque_resultat);
     }
@@ -133,20 +139,27 @@ void simd(const uint8_t* A, const uint8_t* B, uint8_t* Res, int n) {
 int localiser_premier_zero_simd(const uint8_t* ptr) {
     __m128i target = _mm_set1_epi8(0x00); // Remplit un registre de 0 [cite: 67, 68]
     __m128i data = _mm_loadu_si128((const __m128i*)ptr); // Charge 16 octets [cite: 69]
+    
     // Compare chaque octet à zéro [cite: 71, 74]
     __m128i cmp = _mm_cmpeq_epi8(data, target);
+    
     // Extrait les bits de poids fort (MSB) dans un entier de 16 bits [cite: 64, 73, 75]
     int mask = _mm_movemask_epi8(cmp);
+    
     if (mask == 0) return -1; // Aucun zéro trouvé 
+
     // Utilise une instruction CPU (Bit Scan Forward) pour trouver l'index du premier bit à 1
     return __builtin_ctz(mask); 
 }
 
-void rechercher_caractere_simd(const uint8_t* ptr, uint8_t cible) {
+int rechercher_caractere_simd(const uint8_t* ptr, uint8_t cible) {
     // Question 3.3 : On utilise _mm_set1_epi8 pour diffuser la cible [cite: 78, 79]
     __m128i target = _mm_set1_epi8(cible); 
     __m128i data = _mm_loadu_si128((const __m128i*)ptr);
     __m128i cmp = _mm_cmpeq_epi8(data, target); // Comparaison identique [cite: 80]
+    
     int mask = _mm_movemask_epi8(cmp);
     printf("Masque de recherche pour '%c' (0x%02X) : 0x%04X\n", cible, cible, mask);
+    if (mask == 0) return -1;
+    return __builtin_ctz(mask); // Index du premier match
 }
