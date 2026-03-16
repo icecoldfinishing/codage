@@ -132,32 +132,19 @@ void simd(const uint8_t* A, const uint8_t* B, uint8_t* Res, int n) {
     }
 }
 
-/**
- * EXERCICE 3 : Recherche rapide via Movemask
- * Utilise SSE (128 bits) pour scanner 16 octets simultanément[cite: 63, 64].
- */
 int localiser_premier_zero_simd(const uint8_t* ptr) {
-    __m128i target = _mm_set1_epi8(0x00); // Remplit un registre de 0 [cite: 67, 68]
-    __m128i data = _mm_loadu_si128((const __m128i*)ptr); // Charge 16 octets [cite: 69]
-    
-    // Compare chaque octet à zéro [cite: 71, 74]
+    __m128i target = _mm_set1_epi8(0x00); 
+    __m128i data = _mm_loadu_si128((const __m128i*)ptr); 
     __m128i cmp = _mm_cmpeq_epi8(data, target);
-    
-    // Extrait les bits de poids fort (MSB) dans un entier de 16 bits [cite: 64, 73, 75]
     int mask = _mm_movemask_epi8(cmp);
-    
-    if (mask == 0) return -1; // Aucun zéro trouvé 
-
-    // Utilise une instruction CPU (Bit Scan Forward) pour trouver l'index du premier bit à 1
+    if (mask == 0) return -1; 
     return __builtin_ctz(mask); 
 }
 
 int rechercher_caractere_simd(const uint8_t* ptr, uint8_t cible) {
-    // Question 3.3 : On utilise _mm_set1_epi8 pour diffuser la cible [cite: 78, 79]
     __m128i target = _mm_set1_epi8(cible); 
     __m128i data = _mm_loadu_si128((const __m128i*)ptr);
-    __m128i cmp = _mm_cmpeq_epi8(data, target); // Comparaison identique [cite: 80]
-    
+    __m128i cmp = _mm_cmpeq_epi8(data, target); 
     int mask = _mm_movemask_epi8(cmp);
     printf("Masque de recherche pour '%c' (0x%02X) : 0x%04X\n", cible, cible, mask);
     if (mask == 0) return -1;
