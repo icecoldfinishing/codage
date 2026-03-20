@@ -6,10 +6,10 @@
 #include "resolution.h"
 
 ReglePrefixe dictionnaire[] = {
-    {'E', 0, 1},   // 0
-    {'A', 2, 2},   // 10
-    {'T', 6, 3},   // 110
-    {'N', 7, 3}    // 111
+    {'E', 0, 1},   
+    {'A', 2, 2},   
+    {'T', 6, 3},   
+    {'N', 7, 3}    
 };
 int nb_regles = 4;
 
@@ -59,7 +59,6 @@ void decodage(uint8_t data) {
         for (int r = 0; r < nb_regles; r++) {
             if (len == dictionnaire[r].longueur && registre == dictionnaire[r].code) {
                 printf("%c ", dictionnaire[r].lettre);
-                // Reset pour la lettre suivante
                 registre = 0;
                 len = 0;
                 break;
@@ -148,5 +147,5 @@ int rechercher_caractere_simd(const uint8_t* ptr, uint8_t cible) {
     int mask = _mm_movemask_epi8(cmp);
     printf("Masque de recherche pour '%c' (0x%02X) : 0x%04X\n", cible, cible, mask);
     if (mask == 0) return -1;
-    return __builtin_ctz(mask); // Index du premier match
+    return __builtin_ctz(mask); 
 }
