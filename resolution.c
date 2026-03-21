@@ -14,7 +14,6 @@ ReglePrefixe dictionnaire[] = {
 int nb_regles = 4;
 
 void conversion_base(uint16_t valeur, uint8_t base) {
-    // Max 16 chiffres pour un uint16_t en base 2
     char chiffres[16];
     int i = 0;
     const char* alphabet = "0123456789ABCDEF";
