@@ -45,8 +45,8 @@ void conversion_base(uint16_t valeur, uint8_t base) {
 
 void decodage(uint8_t data) {
     printf("Exercice 1 : Decodage de 0x%02X\n", data);
-    uint8_t registre = 0; // Accumulateur de bits
-    int len = 0;          // Nombre de bits dans le registre
+    uint8_t registre = 0; 
+    int len = 0;         
     printf("Sequence : ");
     // Parcourt les bits de l'octet (de gauche à droite)
     for (int i = 7; i >= 0; i--) {
