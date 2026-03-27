@@ -47,5 +47,44 @@ int main() {
     int index_caractere = rechercher_caractere_simd(chaine, 'W');
     printf("Caractere '%c' trouve a l'index : %d\n", 'W', index_caractere);
 
+    printf("\n--- EXERCICE 4 : CONVERSIONS OO ---\n");
+
+    ConvertisseurNumerique conv;
+    convertisseur_init(&conv, 8, 1e-6);
+
+    int16_t valeur_signee = -37;
+    uint16_t code_msb = convertir_vers_signed_msb(&conv, valeur_signee);
+    int16_t retour_signee = convertir_depuis_signed_msb(&conv, code_msb);
+    printf("Signed-MSB (%u bits): %d -> 0x%02X -> %d\n", conv.nb_bits_signed, valeur_signee, code_msb, retour_signee);
+
+    if (entier_relatif_vers_base(&conv, valeur_signee, 2, conv.buffer, BINAIRE_BUFFER_TAILLE) != NULL) {
+        printf("Entier relatif dynamique base 2 : %d -> %s\n", valeur_signee, conv.buffer);
+    }
+    if (entier_relatif_vers_base(&conv, valeur_signee, 8, conv.buffer, BINAIRE_BUFFER_TAILLE) != NULL) {
+        printf("Entier relatif dynamique base 8 : %d -> %s\n", valeur_signee, conv.buffer);
+    }
+    if (entier_relatif_vers_base(&conv, valeur_signee, 16, conv.buffer, BINAIRE_BUFFER_TAILLE) != NULL) {
+        printf("Entier relatif dynamique base 16 : %d -> %s\n", valeur_signee, conv.buffer);
+    }
+
+    float valeur_float = -13.625f;
+    IEEE754Simple ieee = decomposer_ieee754_simple_precision(valeur_float);
+    char ieee_bits_1_8_23[40];
+
+    printf("IEEE754 simple precision de %.3f\n", valeur_float);
+    if (ieee754_simple_precision_vers_binaire_1_8_23(valeur_float, ieee_bits_1_8_23, sizeof(ieee_bits_1_8_23)) != NULL) {
+        printf("  Base 2 (32 bits) : %s\n", ieee_bits_1_8_23);
+        printf("  Format           : signe(1) | exposant(8) | mantisse(23)\n");
+    }
+    printf("  Signe    : %u\n", ieee.signe);
+    printf("  Exposant : 0x%02X (%u)\n", ieee.exposant_biase, ieee.exposant_biase);
+    printf("  Mantisse : 0x%06X\n", ieee.mantisse);
+    printf("  Brut     : 0x%08X\n", ieee.brut);
+
+    if (decimal_vers_binaire(&conv, 10.625, conv.buffer, BINAIRE_BUFFER_TAILLE) != NULL) {
+        printf("Decimal vers binaire (eps=%g) : 10.625 -> %s\n", conv.epsilon, conv.buffer);
+    }
+
+
     return 0;
 }
