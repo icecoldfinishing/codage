@@ -37,7 +37,6 @@ int main() {
     }
     printf("\n\n");
 
-    // --- Exercice 3 : Recherche Movemask SSE ---
     // Chaîne avec un caractère nul à l'index 5
     uint8_t chaine[16] = "Hello\0World!!"; 
     int index_zero = localiser_premier_zero_simd(chaine);
