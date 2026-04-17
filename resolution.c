@@ -1,8 +1,10 @@
 #include <immintrin.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <limits.h>
 #include <math.h>
 #include "resolution.h"
 
@@ -359,4 +361,777 @@ const char* decimal_vers_binaire(const ConvertisseurNumerique* self, double vale
 
     sortie[pos] = '\0';
     return sortie;
+}
+
+static uint16_t lire_u16_le(const uint8_t* p) {
+    return (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
+}
+
+static uint32_t lire_u32_le(const uint8_t* p) {
+    return (uint32_t)(p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24));
+}
+
+static void ecrire_u16_le(uint8_t* p, uint16_t v) {
+    p[0] = (uint8_t)(v & 0xFFu);
+    p[1] = (uint8_t)((v >> 8) & 0xFFu);
+}
+
+static void ecrire_u32_le(uint8_t* p, uint32_t v) {
+    p[0] = (uint8_t)(v & 0xFFu);
+    p[1] = (uint8_t)((v >> 8) & 0xFFu);
+    p[2] = (uint8_t)((v >> 16) & 0xFFu);
+    p[3] = (uint8_t)((v >> 24) & 0xFFu);
+}
+
+static int32_t abs_i32(int32_t x) {
+    return (x < 0) ? -x : x;
+}
+
+static int32_t borne_i32(int32_t x, int32_t min_v, int32_t max_v) {
+    if (x < min_v) {
+        return min_v;
+    }
+    if (x > max_v) {
+        return max_v;
+    }
+    return x;
+}
+
+static int32_t max_amp(uint16_t bits_per_sample) {
+    if (bits_per_sample == 8u) {
+        return 127;
+    }
+    if (bits_per_sample == 16u) {
+        return 32767;
+    }
+    return 0;
+}
+
+static int32_t lire_echantillon(const uint8_t* p, uint16_t bits_per_sample) {
+    if (bits_per_sample == 8u) {
+        return (int32_t)p[0] - 128;
+    }
+    if (bits_per_sample == 16u) {
+        int16_t v = (int16_t)lire_u16_le(p);
+        return (int32_t)v;
+    }
+    return 0;
+}
+
+static void ecrire_echantillon(uint8_t* p, uint16_t bits_per_sample, int32_t v) {
+    if (bits_per_sample == 8u) {
+        int32_t centered = borne_i32(v, -128, 127);
+        p[0] = (uint8_t)(centered + 128);
+        return;
+    }
+    if (bits_per_sample == 16u) {
+        int32_t clamped = borne_i32(v, -32768, 32767);
+        ecrire_u16_le(p, (uint16_t)(int16_t)clamped);
+    }
+}
+
+static int wav_rebuild_pcm_bytes(WavAudio* self, const WavFormat* fmt, const uint8_t* data, uint32_t data_size) {
+    if (self == NULL || fmt == NULL || data == NULL) {
+        return -1;
+    }
+
+    uint32_t file_size = 44u + data_size;
+    uint8_t* bytes = (uint8_t*)malloc(file_size);
+    if (bytes == NULL) {
+        return -1;
+    }
+
+    memcpy(bytes + 0, "RIFF", 4);
+    ecrire_u32_le(bytes + 4, file_size - 8u);
+    memcpy(bytes + 8, "WAVE", 4);
+
+    memcpy(bytes + 12, "fmt ", 4);
+    ecrire_u32_le(bytes + 16, 16u);
+    ecrire_u16_le(bytes + 20, fmt->audio_format);
+    ecrire_u16_le(bytes + 22, fmt->num_channels);
+    ecrire_u32_le(bytes + 24, fmt->sample_rate);
+    ecrire_u32_le(bytes + 28, fmt->byte_rate);
+    ecrire_u16_le(bytes + 32, fmt->block_align);
+    ecrire_u16_le(bytes + 34, fmt->bits_per_sample);
+
+    memcpy(bytes + 36, "data", 4);
+    ecrire_u32_le(bytes + 40, data_size);
+    memcpy(bytes + 44, data, data_size);
+
+    wav_free(self);
+    self->bytes = bytes;
+    self->byte_count = file_size;
+    self->fmt = *fmt;
+    self->data_offset = 44u;
+    self->data_size = data_size;
+    return 0;
+}
+
+void wav_init(WavAudio* self) {
+    if (self == NULL) {
+        return;
+    }
+    self->bytes = NULL;
+    self->byte_count = 0;
+    memset(&self->fmt, 0, sizeof(self->fmt));
+    self->data_offset = 0;
+    self->data_size = 0;
+}
+
+void wav_free(WavAudio* self) {
+    if (self == NULL) {
+        return;
+    }
+    free(self->bytes);
+    self->bytes = NULL;
+    self->byte_count = 0;
+    memset(&self->fmt, 0, sizeof(self->fmt));
+    self->data_offset = 0;
+    self->data_size = 0;
+}
+
+int wav_load_file(WavAudio* self, const char* path) {
+    if (self == NULL || path == NULL) {
+        return -1;
+    }
+
+    FILE* f = fopen(path, "rb");
+    if (f == NULL) {
+        return -1;
+    }
+
+    if (fseek(f, 0, SEEK_END) != 0) {
+        fclose(f);
+        return -1;
+    }
+
+    long file_size = ftell(f);
+    if (file_size <= 0) {
+        fclose(f);
+        return -1;
+    }
+
+    if (fseek(f, 0, SEEK_SET) != 0) {
+        fclose(f);
+        return -1;
+    }
+
+    uint8_t* buffer = (uint8_t*)malloc((size_t)file_size);
+    if (buffer == NULL) {
+        fclose(f);
+        return -1;
+    }
+
+    size_t read_count = fread(buffer, 1, (size_t)file_size, f);
+    fclose(f);
+    if (read_count != (size_t)file_size) {
+        free(buffer);
+        return -1;
+    }
+
+    wav_free(self);
+    self->bytes = buffer;
+    self->byte_count = (uint32_t)file_size;
+    return 0;
+}
+
+int wav_parse_header(WavAudio* self) {
+    if (self == NULL || self->bytes == NULL || self->byte_count < 44u) {
+        return -1;
+    }
+
+    if (memcmp(self->bytes + 0, "RIFF", 4) != 0 || memcmp(self->bytes + 8, "WAVE", 4) != 0) {
+        return -1;
+    }
+
+    bool fmt_found = false;
+    bool data_found = false;
+
+    uint32_t pos = 12u;
+    while (pos + 8u <= self->byte_count) {
+        const uint8_t* chunk = self->bytes + pos;
+        uint32_t chunk_size = lire_u32_le(chunk + 4);
+        uint32_t chunk_data_pos = pos + 8u;
+        if (chunk_data_pos > self->byte_count) {
+            return -1;
+        }
+
+        if (chunk_data_pos + chunk_size > self->byte_count) {
+            return -1;
+        }
+
+        if (memcmp(chunk, "fmt ", 4) == 0) {
+            if (chunk_size < 16u) {
+                return -1;
+            }
+            const uint8_t* fmt = self->bytes + chunk_data_pos;
+            self->fmt.audio_format = lire_u16_le(fmt + 0);
+            self->fmt.num_channels = lire_u16_le(fmt + 2);
+            self->fmt.sample_rate = lire_u32_le(fmt + 4);
+            self->fmt.byte_rate = lire_u32_le(fmt + 8);
+            self->fmt.block_align = lire_u16_le(fmt + 12);
+            self->fmt.bits_per_sample = lire_u16_le(fmt + 14);
+            fmt_found = true;
+        } else if (memcmp(chunk, "data", 4) == 0) {
+            self->data_offset = chunk_data_pos;
+            self->data_size = chunk_size;
+            data_found = true;
+        }
+
+        pos = chunk_data_pos + chunk_size + (chunk_size & 1u);
+    }
+
+    if (!fmt_found || !data_found) {
+        return -1;
+    }
+
+    if (self->fmt.audio_format != 1u) {
+        return -1;
+    }
+    if (self->fmt.bits_per_sample != 8u && self->fmt.bits_per_sample != 16u) {
+        return -1;
+    }
+    return 0;
+}
+
+int wav_write_file(const WavAudio* self, const char* path) {
+    if (self == NULL || self->bytes == NULL || self->byte_count == 0u || path == NULL) {
+        return -1;
+    }
+
+    FILE* f = fopen(path, "wb");
+    if (f == NULL) {
+        return -1;
+    }
+
+    size_t written = fwrite(self->bytes, 1, self->byte_count, f);
+    fclose(f);
+    return (written == self->byte_count) ? 0 : -1;
+}
+
+int wav_clone(const WavAudio* src, WavAudio* dst) {
+    if (src == NULL || dst == NULL || src->bytes == NULL) {
+        return -1;
+    }
+
+    uint8_t* copy = (uint8_t*)malloc(src->byte_count);
+    if (copy == NULL) {
+        return -1;
+    }
+
+    memcpy(copy, src->bytes, src->byte_count);
+    wav_free(dst);
+    dst->bytes = copy;
+    dst->byte_count = src->byte_count;
+    dst->fmt = src->fmt;
+    dst->data_offset = src->data_offset;
+    dst->data_size = src->data_size;
+    return 0;
+}
+
+int wav_downsample_by_2(const WavAudio* src, WavAudio* dst, bool use_max_pair) {
+    if (src == NULL || dst == NULL || src->bytes == NULL) {
+        return -1;
+    }
+
+    uint16_t bps = src->fmt.bits_per_sample;
+    uint16_t sample_bytes = (uint16_t)(bps / 8u);
+    uint32_t frame_bytes = src->fmt.block_align;
+    if (sample_bytes == 0u || frame_bytes == 0u) {
+        return -1;
+    }
+
+    uint32_t frame_count = src->data_size / frame_bytes;
+    uint32_t out_frames = frame_count / 2u;
+    if (out_frames == 0u) {
+        return -1;
+    }
+
+    uint32_t out_data_size = out_frames * frame_bytes;
+    uint8_t* out_data = (uint8_t*)malloc(out_data_size);
+    if (out_data == NULL) {
+        return -1;
+    }
+
+    const uint8_t* data = src->bytes + src->data_offset;
+    for (uint32_t i = 0; i < out_frames; i++) {
+        const uint8_t* f1 = data + (2u * i) * frame_bytes;
+        const uint8_t* f2 = f1 + frame_bytes;
+        uint8_t* fout = out_data + i * frame_bytes;
+
+        for (uint16_t c = 0; c < src->fmt.num_channels; c++) {
+            const uint8_t* s1 = f1 + c * sample_bytes;
+            const uint8_t* s2 = f2 + c * sample_bytes;
+            int32_t v1 = lire_echantillon(s1, bps);
+            int32_t v2 = lire_echantillon(s2, bps);
+            int32_t mix = 0;
+
+            if (use_max_pair) {
+                mix = (abs_i32(v1) >= abs_i32(v2)) ? v1 : v2;
+            } else {
+                mix = (v1 + v2) / 2;
+            }
+
+            ecrire_echantillon(fout + c * sample_bytes, bps, mix);
+        }
+    }
+
+    WavFormat out_fmt = src->fmt;
+    out_fmt.sample_rate = (src->fmt.sample_rate > 1u) ? (src->fmt.sample_rate / 2u) : 1u;
+    out_fmt.byte_rate = out_fmt.sample_rate * out_fmt.block_align;
+
+    int rc = wav_rebuild_pcm_bytes(dst, &out_fmt, out_data, out_data_size);
+    free(out_data);
+    return rc;
+}
+
+int wav_quantize_16_to_8(const WavAudio* src, WavAudio* dst) {
+    if (src == NULL || dst == NULL || src->bytes == NULL) {
+        return -1;
+    }
+    if (src->fmt.bits_per_sample != 16u) {
+        return -1;
+    }
+
+    uint32_t in_frame_bytes = src->fmt.block_align;
+    uint32_t frame_count = src->data_size / in_frame_bytes;
+
+    WavFormat out_fmt = src->fmt;
+    out_fmt.bits_per_sample = 8u;
+    out_fmt.block_align = out_fmt.num_channels;
+    out_fmt.byte_rate = out_fmt.sample_rate * out_fmt.block_align;
+
+    uint32_t out_data_size = frame_count * out_fmt.block_align;
+    uint8_t* out_data = (uint8_t*)malloc(out_data_size);
+    if (out_data == NULL) {
+        return -1;
+    }
+
+    const uint8_t* in_data = src->bytes + src->data_offset;
+    for (uint32_t i = 0; i < frame_count; i++) {
+        const uint8_t* in_frame = in_data + i * in_frame_bytes;
+        uint8_t* out_frame = out_data + i * out_fmt.block_align;
+
+        for (uint16_t c = 0; c < src->fmt.num_channels; c++) {
+            int16_t s16 = (int16_t)lire_u16_le(in_frame + c * 2u);
+            int32_t u8 = ((int32_t)s16 + 32768) >> 8;
+            out_frame[c] = (uint8_t)borne_i32(u8, 0, 255);
+        }
+    }
+
+    int rc = wav_rebuild_pcm_bytes(dst, &out_fmt, out_data, out_data_size);
+    free(out_data);
+    return rc;
+}
+
+void wav_soft_desaturate_inplace(WavAudio* self, WavStats* out_stats) {
+    if (self == NULL || self->bytes == NULL) {
+        return;
+    }
+
+    uint16_t bps = self->fmt.bits_per_sample;
+    uint16_t sb = (uint16_t)(bps / 8u);
+    if (sb == 0u) {
+        return;
+    }
+
+    int32_t peak = max_amp(bps);
+    if (peak <= 0) {
+        return;
+    }
+
+    WavStats stats;
+    memset(&stats, 0, sizeof(stats));
+
+    uint8_t* data = self->bytes + self->data_offset;
+    uint32_t sample_count = self->data_size / sb;
+    double tanh_norm = tanh(1.8);
+
+    for (uint32_t i = 0; i < sample_count; i++) {
+        uint8_t* p = data + i * sb;
+        int32_t s = lire_echantillon(p, bps);
+        int32_t a = abs_i32(s);
+        if (a > stats.max_abs_before) {
+            stats.max_abs_before = a;
+        }
+        if (a >= peak) {
+            stats.saturated_count++;
+        }
+
+        double x = (double)s / (double)peak;
+        double y = tanh(1.8 * x) / tanh_norm;
+        int32_t out = (int32_t)llround(y * (double)peak);
+        ecrire_echantillon(p, bps, out);
+
+        int32_t ao = abs_i32(out);
+        if (ao > stats.max_abs_after) {
+            stats.max_abs_after = ao;
+        }
+    }
+
+    stats.applied_gain = 1.0;
+    if (out_stats != NULL) {
+        *out_stats = stats;
+    }
+}
+
+void wav_normalize_inplace(WavAudio* self, double target_peak_ratio, WavStats* out_stats) {
+    if (self == NULL || self->bytes == NULL) {
+        return;
+    }
+
+    uint16_t bps = self->fmt.bits_per_sample;
+    uint16_t sb = (uint16_t)(bps / 8u);
+    if (sb == 0u) {
+        return;
+    }
+
+    int32_t peak = max_amp(bps);
+    if (peak <= 0) {
+        return;
+    }
+
+    if (target_peak_ratio <= 0.0 || target_peak_ratio > 1.0) {
+        target_peak_ratio = 0.95;
+    }
+
+    WavStats stats;
+    memset(&stats, 0, sizeof(stats));
+
+    uint8_t* data = self->bytes + self->data_offset;
+    uint32_t sample_count = self->data_size / sb;
+
+    for (uint32_t i = 0; i < sample_count; i++) {
+        int32_t s = lire_echantillon(data + i * sb, bps);
+        int32_t a = abs_i32(s);
+        if (a > stats.max_abs_before) {
+            stats.max_abs_before = a;
+        }
+    }
+
+    if (stats.max_abs_before == 0) {
+        stats.applied_gain = 1.0;
+        if (out_stats != NULL) {
+            *out_stats = stats;
+        }
+        return;
+    }
+
+    double gain = ((double)peak * target_peak_ratio) / (double)stats.max_abs_before;
+    stats.applied_gain = gain;
+
+    for (uint32_t i = 0; i < sample_count; i++) {
+        uint8_t* p = data + i * sb;
+        int32_t s = lire_echantillon(p, bps);
+        int32_t out = (int32_t)llround((double)s * gain);
+        int32_t clamped = borne_i32(out, -peak, peak);
+        if (clamped != out) {
+            stats.saturated_count++;
+        }
+        ecrire_echantillon(p, bps, clamped);
+
+        int32_t a = abs_i32(clamped);
+        if (a > stats.max_abs_after) {
+            stats.max_abs_after = a;
+        }
+    }
+
+    if (out_stats != NULL) {
+        *out_stats = stats;
+    }
+}
+
+int wav_extract_left_channel(const WavAudio* src, WavAudio* dst) {
+    if (src == NULL || dst == NULL || src->bytes == NULL) {
+        return -1;
+    }
+    if (src->fmt.num_channels < 2u) {
+        return -1;
+    }
+
+    uint16_t bps = src->fmt.bits_per_sample;
+    uint16_t sb = (uint16_t)(bps / 8u);
+    uint32_t in_fb = src->fmt.block_align;
+    uint32_t frame_count = src->data_size / in_fb;
+
+    WavFormat out_fmt = src->fmt;
+    out_fmt.num_channels = 1u;
+    out_fmt.block_align = sb;
+    out_fmt.byte_rate = out_fmt.sample_rate * out_fmt.block_align;
+
+    uint32_t out_data_size = frame_count * sb;
+    uint8_t* out_data = (uint8_t*)malloc(out_data_size);
+    if (out_data == NULL) {
+        return -1;
+    }
+
+    const uint8_t* in_data = src->bytes + src->data_offset;
+    for (uint32_t i = 0; i < frame_count; i++) {
+        const uint8_t* in_frame = in_data + i * in_fb;
+        memcpy(out_data + i * sb, in_frame, sb);
+    }
+
+    int rc = wav_rebuild_pcm_bytes(dst, &out_fmt, out_data, out_data_size);
+    free(out_data);
+    return rc;
+}
+
+int wav_stereo_to_2_1(const WavAudio* src, WavAudio* dst, bool apply_lfe_lowpass) {
+    if (src == NULL || dst == NULL || src->bytes == NULL) {
+        return -1;
+    }
+    if (src->fmt.num_channels != 2u) {
+        return -1;
+    }
+
+    uint16_t bps = src->fmt.bits_per_sample;
+    uint16_t sb = (uint16_t)(bps / 8u);
+    uint32_t in_fb = src->fmt.block_align;
+    uint32_t frame_count = src->data_size / in_fb;
+
+    WavFormat out_fmt = src->fmt;
+    out_fmt.num_channels = 3u;
+    out_fmt.block_align = (uint16_t)(3u * sb);
+    out_fmt.byte_rate = out_fmt.sample_rate * out_fmt.block_align;
+
+    uint32_t out_data_size = frame_count * out_fmt.block_align;
+    uint8_t* out_data = (uint8_t*)malloc(out_data_size);
+    if (out_data == NULL) {
+        return -1;
+    }
+
+    const uint8_t* in_data = src->bytes + src->data_offset;
+    double lfe_mem = 0.0;
+
+    for (uint32_t i = 0; i < frame_count; i++) {
+        const uint8_t* in_frame = in_data + i * in_fb;
+        uint8_t* out_frame = out_data + i * out_fmt.block_align;
+
+        int32_t l = lire_echantillon(in_frame + 0u * sb, bps);
+        int32_t r = lire_echantillon(in_frame + 1u * sb, bps);
+        int32_t sub = (l + r) / 2;
+
+        if (apply_lfe_lowpass) {
+            lfe_mem = 0.92 * lfe_mem + 0.08 * (double)sub;
+            sub = (int32_t)llround(lfe_mem);
+        }
+
+        ecrire_echantillon(out_frame + 0u * sb, bps, l);
+        ecrire_echantillon(out_frame + 1u * sb, bps, r);
+        ecrire_echantillon(out_frame + 2u * sb, bps, sub);
+    }
+
+    int rc = wav_rebuild_pcm_bytes(dst, &out_fmt, out_data, out_data_size);
+    free(out_data);
+    return rc;
+}
+
+int wav_stereo_to_5_1(const WavAudio* src, WavAudio* dst) {
+    if (src == NULL || dst == NULL || src->bytes == NULL) {
+        return -1;
+    }
+    if (src->fmt.num_channels != 2u) {
+        return -1;
+    }
+
+    uint16_t bps = src->fmt.bits_per_sample;
+    uint16_t sb = (uint16_t)(bps / 8u);
+    uint32_t in_fb = src->fmt.block_align;
+    uint32_t frame_count = src->data_size / in_fb;
+
+    WavFormat out_fmt = src->fmt;
+    out_fmt.num_channels = 6u;
+    out_fmt.block_align = (uint16_t)(6u * sb);
+    out_fmt.byte_rate = out_fmt.sample_rate * out_fmt.block_align;
+
+    uint32_t out_data_size = frame_count * out_fmt.block_align;
+    uint8_t* out_data = (uint8_t*)malloc(out_data_size);
+    if (out_data == NULL) {
+        return -1;
+    }
+
+    const uint8_t* in_data = src->bytes + src->data_offset;
+    double lfe_mem = 0.0;
+
+    for (uint32_t i = 0; i < frame_count; i++) {
+        const uint8_t* in_frame = in_data + i * in_fb;
+        uint8_t* out_frame = out_data + i * out_fmt.block_align;
+
+        int32_t l = lire_echantillon(in_frame + 0u * sb, bps);
+        int32_t r = lire_echantillon(in_frame + 1u * sb, bps);
+        int32_t c = (l + r) / 2;
+        lfe_mem = 0.94 * lfe_mem + 0.06 * (double)c;
+        int32_t lfe = (int32_t)llround(lfe_mem);
+        int32_t ls = l / 2;
+        int32_t rs = r / 2;
+
+        ecrire_echantillon(out_frame + 0u * sb, bps, l);
+        ecrire_echantillon(out_frame + 1u * sb, bps, r);
+        ecrire_echantillon(out_frame + 2u * sb, bps, c);
+        ecrire_echantillon(out_frame + 3u * sb, bps, lfe);
+        ecrire_echantillon(out_frame + 4u * sb, bps, ls);
+        ecrire_echantillon(out_frame + 5u * sb, bps, rs);
+    }
+
+    int rc = wav_rebuild_pcm_bytes(dst, &out_fmt, out_data, out_data_size);
+    free(out_data);
+    return rc;
+}
+
+int wav_generate_sine_stereo(WavAudio* dst, uint32_t sample_rate, uint16_t bits_per_sample, double duration_sec, double frequency_hz) {
+    if (dst == NULL) {
+        return -1;
+    }
+    if ((bits_per_sample != 8u && bits_per_sample != 16u) || sample_rate == 0u || duration_sec <= 0.0 || frequency_hz <= 0.0) {
+        return -1;
+    }
+
+    uint16_t channels = 2u;
+    uint16_t sb = (uint16_t)(bits_per_sample / 8u);
+    uint32_t frame_count = (uint32_t)llround(duration_sec * (double)sample_rate);
+    if (frame_count == 0u) {
+        return -1;
+    }
+
+    WavFormat fmt;
+    fmt.audio_format = 1u;
+    fmt.num_channels = channels;
+    fmt.sample_rate = sample_rate;
+    fmt.bits_per_sample = bits_per_sample;
+    fmt.block_align = (uint16_t)(channels * sb);
+    fmt.byte_rate = sample_rate * fmt.block_align;
+
+    uint32_t out_data_size = frame_count * fmt.block_align;
+    uint8_t* out_data = (uint8_t*)malloc(out_data_size);
+    if (out_data == NULL) {
+        return -1;
+    }
+
+    int32_t peak = max_amp(bits_per_sample);
+    const double two_pi = 6.28318530717958647692;
+
+    for (uint32_t n = 0; n < frame_count; n++) {
+        double t = (double)n / (double)sample_rate;
+        double s_l = sin(two_pi * frequency_hz * t);
+        double s_r = sin(two_pi * frequency_hz * t + 0.25);
+
+        int32_t l = (int32_t)llround(0.75 * s_l * (double)peak);
+        int32_t r = (int32_t)llround(0.75 * s_r * (double)peak);
+
+        uint8_t* frame = out_data + n * fmt.block_align;
+        ecrire_echantillon(frame + 0u * sb, bits_per_sample, l);
+        ecrire_echantillon(frame + 1u * sb, bits_per_sample, r);
+    }
+
+    int rc = wav_rebuild_pcm_bytes(dst, &fmt, out_data, out_data_size);
+    free(out_data);
+    return rc;
+}
+
+int wav_generate_sine_5_1_travel(WavAudio* dst, uint32_t sample_rate, uint16_t bits_per_sample, double duration_sec, double frequency_hz) {
+    if (dst == NULL) {
+        return -1;
+    }
+    if ((bits_per_sample != 8u && bits_per_sample != 16u) || sample_rate == 0u || duration_sec <= 0.0 || frequency_hz <= 0.0) {
+        return -1;
+    }
+
+    uint16_t channels = 6u;
+    uint16_t sb = (uint16_t)(bits_per_sample / 8u);
+    uint32_t frame_count = (uint32_t)llround(duration_sec * (double)sample_rate);
+    if (frame_count == 0u) {
+        return -1;
+    }
+
+    WavFormat fmt;
+    fmt.audio_format = 1u;
+    fmt.num_channels = channels;
+    fmt.sample_rate = sample_rate;
+    fmt.bits_per_sample = bits_per_sample;
+    fmt.block_align = (uint16_t)(channels * sb);
+    fmt.byte_rate = sample_rate * fmt.block_align;
+
+    uint32_t out_data_size = frame_count * fmt.block_align;
+    uint8_t* out_data = (uint8_t*)malloc(out_data_size);
+    if (out_data == NULL) {
+        return -1;
+    }
+
+    int32_t peak = max_amp(bits_per_sample);
+    const double two_pi = 6.28318530717958647692;
+
+    for (uint32_t n = 0; n < frame_count; n++) {
+        double t = (double)n / (double)sample_rate;
+        double s = sin(two_pi * frequency_hz * t);
+        double pos = ((double)n / (double)(frame_count - 1u)) * 5.0;
+        uint8_t* frame = out_data + n * fmt.block_align;
+
+        for (uint16_t ch = 0; ch < channels; ch++) {
+            double d = fabs((double)ch - pos);
+            double g = 1.0 - d;
+            if (g < 0.0) {
+                g = 0.0;
+            }
+
+            double amp = 0.85 * g * s;
+            int32_t sample = (int32_t)llround(amp * (double)peak);
+            ecrire_echantillon(frame + ch * sb, bits_per_sample, sample);
+        }
+    }
+
+    int rc = wav_rebuild_pcm_bytes(dst, &fmt, out_data, out_data_size);
+    free(out_data);
+    return rc;
+}
+
+void wav_print_info(const WavAudio* self) {
+    if (self == NULL) {
+        return;
+    }
+    printf("WAV: sampleRate=%u Hz, channels=%u, bits=%u, byteRate=%u, blockAlign=%u\n",
+           self->fmt.sample_rate,
+           self->fmt.num_channels,
+           self->fmt.bits_per_sample,
+           self->fmt.byte_rate,
+           self->fmt.block_align);
+    printf("     dataOffset=%u, dataSize=%u octets\n", self->data_offset, self->data_size);
+}
+
+void wav_print_stats(const char* label, const WavStats* stats) {
+    if (stats == NULL) {
+        return;
+    }
+    printf("%s: sat=%u, maxBefore=%d, maxAfter=%d, gain=%.4f\n",
+           (label != NULL) ? label : "Stats",
+           stats->saturated_count,
+           stats->max_abs_before,
+           stats->max_abs_after,
+           stats->applied_gain);
+}
+
+int wav_play_file_simple(const char* path) {
+    if (path == NULL) {
+        return -1;
+    }
+
+#if defined(_WIN32)
+    char cmd[1024];
+    int n = snprintf(cmd, sizeof(cmd), "powershell -NoProfile -Command \"(New-Object Media.SoundPlayer '%s').PlaySync()\"", path);
+    if (n <= 0 || n >= (int)sizeof(cmd)) {
+        return -1;
+    }
+    return system(cmd);
+#else
+    // Evite le message shell "ffplay: not found" dans les environnements minimaux.
+    if (system("command -v ffplay >/dev/null 2>&1") != 0) {
+        return -1;
+    }
+
+    char cmd[1024];
+    int n = snprintf(cmd, sizeof(cmd), "ffplay -nodisp -autoexit -loglevel quiet \"%s\"", path);
+    if (n <= 0 || n >= (int)sizeof(cmd)) {
+        return -1;
+    }
+    return system(cmd);
+#endif
 }

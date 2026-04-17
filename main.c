@@ -1,8 +1,127 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 #include "resolution.h"
 
-int main() {
+static int run_wav_tp(const char* input_path) {
+    WavAudio source;
+    WavAudio step_downsample;
+    WavAudio step_quantize;
+    WavAudio step_process;
+    WavAudio step_left;
+    WavAudio step_21;
+    WavAudio step_51;
+    WavAudio step_synth;
+
+    wav_init(&source);
+    wav_init(&step_downsample);
+    wav_init(&step_quantize);
+    wav_init(&step_process);
+    wav_init(&step_left);
+    wav_init(&step_21);
+    wav_init(&step_51);
+    wav_init(&step_synth);
+
+    printf("\n--- TP WAV : Manipulation Binaire ---\n");
+
+    if (wav_load_file(&source, input_path) != 0 || wav_parse_header(&source) != 0) {
+        printf("Source '%s' absente ou invalide. Generation d'une source stereo de secours...\n", input_path);
+        if (wav_generate_sine_stereo(&source, 44100, 16, 2.0, 440.0) != 0) {
+            printf("Echec: impossible de generer une source de secours.\n");
+            goto cleanup_fail;
+        }
+        if (wav_write_file(&source, "etape00_source_synthetique.wav") == 0) {
+            printf("Cree: etape00_source_synthetique.wav\n");
+        }
+    }
+
+    if (wav_parse_header(&source) != 0) {
+        printf("Echec du parsing RIFF/WAV.\n");
+        goto cleanup_fail;
+    }
+
+    printf("Etapes 1-2: Parsing + localisation chunk data\n");
+    wav_print_info(&source);
+
+    if (wav_downsample_by_2(&source, &step_downsample, false) == 0) {
+        wav_write_file(&step_downsample, "etape03_downsample_x2.wav");
+        printf("Etape 3: Cree etape03_downsample_x2.wav\n");
+    } else {
+        printf("Etape 3 ignoree (format non supporte).\n");
+    }
+
+    if (wav_quantize_16_to_8(&source, &step_quantize) == 0) {
+        wav_write_file(&step_quantize, "etape04_quantization_8bit.wav");
+        printf("Etape 4: Cree etape04_quantization_8bit.wav\n");
+    } else {
+        printf("Etape 4 ignoree: source non 16 bits PCM.\n");
+    }
+
+    if (wav_clone(&source, &step_process) == 0) {
+        WavStats sat;
+        WavStats norm;
+        wav_soft_desaturate_inplace(&step_process, &sat);
+        wav_print_stats("Etape 5 desaturation", &sat);
+        wav_normalize_inplace(&step_process, 0.95, &norm);
+        wav_print_stats("Etape 6 normalisation", &norm);
+        wav_write_file(&step_process, "etape05_06_dessat_norm.wav");
+        printf("Etapes 5-6: Cree etape05_06_dessat_norm.wav\n");
+    }
+
+    if (wav_extract_left_channel(&source, &step_left) == 0) {
+        wav_write_file(&step_left, "etape07_left_channel.wav");
+        printf("Etape 7: Cree etape07_left_channel.wav\n");
+    } else {
+        printf("Etape 7 ignoree: source non stereo.\n");
+    }
+
+    if (wav_stereo_to_2_1(&source, &step_21, true) == 0) {
+        wav_write_file(&step_21, "etape11_stereo_to_2_1.wav");
+        printf("Etape 11: Cree etape11_stereo_to_2_1.wav\n");
+    } else {
+        printf("Etape 11 ignoree: source non stereo.\n");
+    }
+
+    if (wav_stereo_to_5_1(&source, &step_51) == 0) {
+        wav_write_file(&step_51, "etape12_stereo_to_5_1.wav");
+        printf("Etape 12: Cree etape12_stereo_to_5_1.wav\n");
+    } else {
+        printf("Etape 12 ignoree: source non stereo.\n");
+    }
+
+    if (wav_generate_sine_5_1_travel(&step_synth, 48000, 16, 1.0, 440.0) == 0) {
+        wav_write_file(&step_synth, "etape13_synth_5_1_travel.wav");
+        printf("Etape 13: Cree etape13_synth_5_1_travel.wav\n");
+    }
+
+    printf("Etape 10 (test auditif): lecture de etape13_synth_5_1_travel.wav...\n");
+    if (wav_play_file_simple("etape13_synth_5_1_travel.wav") != 0) {
+        printf("Lecture non disponible automatiquement sur cet environnement.\n");
+    }
+
+    wav_free(&source);
+    wav_free(&step_downsample);
+    wav_free(&step_quantize);
+    wav_free(&step_process);
+    wav_free(&step_left);
+    wav_free(&step_21);
+    wav_free(&step_51);
+    wav_free(&step_synth);
+    return 0;
+
+cleanup_fail:
+    wav_free(&source);
+    wav_free(&step_downsample);
+    wav_free(&step_quantize);
+    wav_free(&step_process);
+    wav_free(&step_left);
+    wav_free(&step_21);
+    wav_free(&step_51);
+    wav_free(&step_synth);
+    return -1;
+}
+
+int main(int argc, char** argv) {
     // --- Initialisation standard ---
     printf("--- TEST DE LANCEMENT ---\n");
     fflush(stdout); 
@@ -84,6 +203,10 @@ int main() {
         printf("Decimal vers binaire (eps=%g) : 10.625 -> %s\n", conv.epsilon, conv.buffer);
     }
 
+    const char* input_wav = (argc > 1 && argv[1] != NULL && strlen(argv[1]) > 0) ? argv[1] : "input.wav";
+    if (run_wav_tp(input_wav) != 0) {
+        printf("Le pipeline WAV a rencontre une erreur.\n");
+    }
 
     return 0;
 }
