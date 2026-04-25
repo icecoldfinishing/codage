@@ -1,4 +1,4 @@
-# On utilise une image officielle qui contient déjà GCC (le compilateur C)
+
 FROM gcc:15.2
 
 # On définit le dossier de travail à l'intérieur du conteneur
