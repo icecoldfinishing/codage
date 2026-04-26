@@ -11,5 +11,5 @@ COPY . .
 RUN gcc -O2 -mavx2 -o /usr/local/bin/codage main.c resolution.c -lm
 # Entrypoint: les arguments passes a `docker run codage ...` sont transmis au binaire.
 ENTRYPOINT ["/usr/local/bin/codage"]
-# Argument par defaut (peut etre remplace par `docker run codage input.wav`).
+
 CMD ["input.wav"]
