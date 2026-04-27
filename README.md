@@ -40,18 +40,41 @@ Le projet nécessite un compilateur supportant les intrinsèques Intel/AMD :
 
 Le projet contient maintenant un pipeline complet orienté objet en C (struct + fonctions) pour manipuler un fichier WAV en mode binaire Little Endian.
 
+### Structure
+
+```
+.
+├─ include/
+│  └─ resolution.h
+├─ src/
+│  ├─ main.c
+│  └─ resolution.c
+├─ docs/
+│  ├─ guide/
+│  └─ run/
+├─ Dockerfile
+├─ Makefile
+└─ README.md
+```
+
 ### Lancer
 
 Compilation (Linux/WSL/MSYS2):
 
 ```bash
-gcc -O2 -mavx2 -msse4.1 -o codage main.c resolution.c -lm
+make
 ```
 
 Exécution avec un WAV d'entrée:
 
 ```bash
 ./codage input.wav
+```
+
+Compilation sans Makefile:
+
+```bash
+gcc -O2 -mavx2 -msse4.1 -Iinclude -o codage src/main.c src/resolution.c -lm
 ```
 
 Si `input.wav` est absent, le programme génère automatiquement une source stéréo de secours.

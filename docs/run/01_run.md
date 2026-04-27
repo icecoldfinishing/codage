@@ -16,10 +16,11 @@ docker run --rm -v "D:\L3\Codage\codage:/app" codage input.wav
 # meme quand /app est monte depuis l'hote.
 
 # Execution locale Windows (hors Docker)
-gcc -O2 -mavx2 -msse4.1 -o codage.exe main.c resolution.c -lm
-.\codage.exe input.wav
+# Note: `make` n'est pas installe par defaut sur Windows.
+# Si tu as MSYS2/Chocolatey, installe make ou utilise la compilation manuelle ci-dessous.
+make
+./codage input.wav
 
-
-
-
-docker run --rm -v "${PWD}:/app" codage input.wav
+# Compilation manuelle (si pas de Makefile)
+gcc -O2 -mavx2 -msse4.1 -Iinclude -o codage.exe src/main.c src/resolution.c -lm
+./codage.exe input.wav
