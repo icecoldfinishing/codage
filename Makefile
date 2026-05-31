@@ -3,7 +3,7 @@ CFLAGS ?= -O2 -Wall -Wextra -mavx2 -msse4.1
 LDFLAGS ?= -lm
 INCLUDES := -Iinclude
 
-SRC := src/main.c src/resolution.c
+SRC := src/main.c src/bases.c src/simd_utils.c src/conversions.c src/wav_core.c src/wav_dsp.c src/wav_compression.c
 OBJ := $(SRC:.c=.o)
 BIN := codage
 INPUT ?= input.wav

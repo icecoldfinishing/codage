@@ -8,7 +8,7 @@ WORKDIR /app
 COPY . .
 
 # On compile le projet
-RUN gcc -O2 -mavx2 -msse4.1 -Iinclude -o /usr/local/bin/codage src/main.c src/resolution.c -lm
+RUN gcc -O2 -mavx2 -msse4.1 -Iinclude -o /usr/local/bin/codage src/main.c src/bases.c src/simd_utils.c src/conversions.c src/wav_core.c src/wav_dsp.c src/wav_compression.c -lm
 # Entrypoint: les arguments passes a `docker run codage ...` sont transmis au binaire.
 ENTRYPOINT ["/usr/local/bin/codage"]
 
