@@ -9,3 +9,4 @@ services:
       - "5000:5000"
     volumes:
       - ./outputs:/app/outputs
+      - ./gui:/app/gui
