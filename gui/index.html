@@ -1,300 +1,405 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>WAV Processor</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
   <!-- FontAwesome pour les icônes propres -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
   <style>
     :root {
-      --bg-900: #0b0f19;
-      --bg-800: #111827;
-      --bg-700: #1f2937;
-      --accent: #6366f1;
-      --accent-hover: #4f46e5;
-      --text-primary: #f3f4f6;
-      --text-secondary: #9ca3af;
-      --border: rgba(255, 255, 255, 0.1);
-      --radius: 8px;
+      --bg: #121212;
+      --surface: #181818;
+      --surface-hover: #202020;
+
+      --spotify: #1DB954;
+      --spotify-hover: #1ed760;
+
+      --text: #ffffff;
+      --muted: #b3b3b3;
+
+      --border: #2a2a2a;
+
+      --radius: 12px;
     }
 
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
     body {
       font-family: 'Inter', sans-serif;
-      background: var(--bg-900);
-      color: var(--text-primary);
+
+      background: var(--bg);
+
+      color: var(--text);
+
       min-height: 100vh;
+
       display: flex;
-      align-items: center;
+
       justify-content: center;
-      padding: 20px;
+
+      align-items: center;
+
+      padding: 24px;
     }
 
     .container {
+
       width: 100%;
-      max-width: 600px;
-      background: var(--bg-800);
+      max-width: 580px;
+
+      background: var(--surface);
+
       border: 1px solid var(--border);
-      border-radius: var(--radius);
+
+      border-radius: 18px;
+
       padding: 24px;
+
       display: flex;
+
       flex-direction: column;
-      gap: 20px;
-      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+
+      gap: 18px;
+
     }
 
     h1 {
+
       font-size: 20px;
-      font-weight: 600;
+
+      font-weight: 700;
+
       display: flex;
+
       align-items: center;
-      gap: 8px;
+
+      gap: 10px;
+
     }
 
     h1 i {
-      color: var(--accent);
-    }
 
-    /* Sélecteur de fichier */
-    .file-select {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+      color: var(--spotify);
+
     }
 
     .file-label {
+
+      color: var(--muted);
+
       font-size: 13px;
-      color: var(--text-secondary);
-      font-weight: 500;
+
     }
 
     .file-input-wrapper {
+
       position: relative;
-      border: 1px dashed var(--border);
+
+      border: 1px dashed #333;
+
       border-radius: var(--radius);
-      padding: 16px;
-      text-align: center;
+
+      min-height: 120px;
+
+      display: flex;
+
+      justify-content: center;
+
+      align-items: center;
+
+      transition: .2s;
+
       cursor: pointer;
-      transition: background 0.2s, border-color 0.2s;
+
     }
 
     .file-input-wrapper:hover {
-      background: rgba(99, 102, 241, 0.05);
-      border-color: var(--accent);
+
+      border-color: var(--spotify);
+
+      background: #151515;
+
     }
 
-    .file-input-wrapper input[type="file"] {
+    .file-input-wrapper input {
+
       position: absolute;
+
       inset: 0;
-      width: 100%;
-      height: 100%;
+
       opacity: 0;
+
       cursor: pointer;
+
     }
 
     .file-info {
-      font-size: 14px;
+
       display: flex;
+
+      flex-direction: column;
+
       align-items: center;
-      justify-content: center;
-      gap: 8px;
-      color: var(--text-secondary);
+
+      gap: 10px;
+
+      color: var(--muted);
+
     }
 
     .file-info i {
-      font-size: 18px;
+
+      font-size: 28px;
+
     }
 
     .file-info.has-file {
-      color: var(--text-primary);
+
+      color: var(--spotify);
+
     }
 
-    /* Bouton principal */
     button {
-      width: 100%;
-      padding: 12px;
+
+      height: 48px;
+
       border: none;
-      border-radius: var(--radius);
-      font-family: inherit;
+
+      border-radius: 999px;
+
+      background: var(--spotify);
+
+      color: black;
+
+      font-weight: 700;
+
       font-size: 14px;
-      font-weight: 600;
+
       cursor: pointer;
-      background: var(--accent);
-      color: #fff;
-      transition: background 0.2s;
+
       display: flex;
-      align-items: center;
+
       justify-content: center;
+
+      align-items: center;
+
       gap: 8px;
+
+      transition: .2s;
+
     }
 
     button:hover:not(:disabled) {
-      background: var(--accent-hover);
+
+      background: var(--spotify-hover);
+
     }
 
     button:disabled {
-      opacity: 0.5;
+
+      opacity: .5;
+
       cursor: not-allowed;
+
     }
 
-    /* Console de Log */
     .console {
-      background: var(--bg-900);
+
+      background: #0b0b0b;
+
       border: 1px solid var(--border);
+
       border-radius: var(--radius);
-      height: 250px;
-      overflow-y: auto;
+
+      height: 240px;
+
+      overflow: auto;
+
+      padding: 14px;
+
       font-family: 'JetBrains Mono', monospace;
+
       font-size: 12px;
-      padding: 12px;
+
       display: flex;
+
       flex-direction: column;
-      gap: 4px;
+
+      gap: 8px;
+
     }
 
     .console::-webkit-scrollbar {
-      width: 4px;
+
+      width: 6px;
+
     }
+
     .console::-webkit-scrollbar-thumb {
-      background: var(--border);
-      border-radius: 2px;
+
+      background: #2f2f2f;
+
     }
 
     .log-line {
+
       display: flex;
-      gap: 8px;
+
+      gap: 10px;
+
       line-height: 1.5;
+
     }
 
-    .log-line.error { color: #f87171; }
-    .log-line.warning { color: #fbbf24; }
-    .log-line.success { color: #34d399; }
-    .log-line.info { color: #60a5fa; }
+    .log-line.info {
+      color: #b3b3b3;
+    }
+
+    .log-line.success {
+      color: #1DB954;
+    }
+
+    .log-line.warning {
+      color: #facc15;
+    }
+
+    .log-line.error {
+      color: #ff5555;
+    }
   </style>
 </head>
+
 <body>
 
-<div class="container">
-  <h1><i class="fa-solid fa-compact-disc"></i> WAV Processor</h1>
+  <div class="container">
+    <h1><i class="fa-solid fa-compact-disc"></i> WAV Processor</h1>
 
-  <div class="file-select">
-    <div class="file-label">Fichier audio WAV</div>
-    <div class="file-input-wrapper">
-      <input type="file" id="file-input" accept=".wav" onchange="handleFileChange(this)" />
-      <div class="file-info" id="file-info">
-        <i class="fa-solid fa-file-audio"></i>
-        <span>Cliquez pour choisir un fichier .wav</span>
+    <div class="file-select">
+      <div class="file-label">Fichier audio WAV</div>
+      <div class="file-input-wrapper">
+        <input type="file" id="file-input" accept=".wav" onchange="handleFileChange(this)" />
+        <div class="file-info" id="file-info">
+          <i class="fa-solid fa-file-audio"></i>
+          <span>Cliquez pour choisir un fichier .wav</span>
+        </div>
+      </div>
+    </div>
+
+    <button id="run-btn" disabled onclick="startProcessing()">
+      <i class="fa-solid fa-play"></i> Lancer le traitement
+    </button>
+
+    <div class="console" id="console">
+      <div class="log-line info">
+        <span>[système]</span> En attente d'un fichier WAV...
       </div>
     </div>
   </div>
 
-  <button id="run-btn" disabled onclick="startProcessing()">
-    <i class="fa-solid fa-play"></i> Lancer le traitement
-  </button>
+  <script>
+    let selectedFile = null;
+    const consoleEl = document.getElementById('console');
+    const runBtn = document.getElementById('run-btn');
+    const fileInfo = document.getElementById('file-info');
 
-  <div class="console" id="console">
-    <div class="log-line info">
-      <span>[système]</span> En attente d'un fichier WAV...
-    </div>
-  </div>
-</div>
-
-<script>
-  let selectedFile = null;
-  const consoleEl = document.getElementById('console');
-  const runBtn = document.getElementById('run-btn');
-  const fileInfo = document.getElementById('file-info');
-
-  function handleFileChange(input) {
-    const file = input.files[0];
-    if (file) {
-      selectedFile = file;
-      runBtn.disabled = false;
-      fileInfo.classList.add('has-file');
-      fileInfo.querySelector('span').textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-      addLog('info', `Fichier sélectionné : ${file.name}`);
-    } else {
-      selectedFile = null;
-      runBtn.disabled = true;
-      fileInfo.classList.remove('has-file');
-      fileInfo.querySelector('span').textContent = 'Cliquez pour choisir un fichier .wav';
+    function handleFileChange(input) {
+      const file = input.files[0];
+      if (file) {
+        selectedFile = file;
+        runBtn.disabled = false;
+        fileInfo.classList.add('has-file');
+        fileInfo.querySelector('span').textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+        addLog('info', `Fichier sélectionné : ${file.name}`);
+      } else {
+        selectedFile = null;
+        runBtn.disabled = true;
+        fileInfo.classList.remove('has-file');
+        fileInfo.querySelector('span').textContent = 'Cliquez pour choisir un fichier .wav';
+      }
     }
-  }
 
-  function addLog(type, text) {
-    const line = document.createElement('div');
-    line.className = `log-line ${type}`;
-    
-    let iconClass = 'fa-info-circle';
-    if (type === 'success') iconClass = 'fa-check-circle';
-    if (type === 'warning') iconClass = 'fa-exclamation-circle';
-    if (type === 'error') iconClass = 'fa-times-circle';
+    function addLog(type, text) {
+      const line = document.createElement('div');
+      line.className = `log-line ${type}`;
 
-    line.innerHTML = `
+      let iconClass = 'fa-info-circle';
+      if (type === 'success') iconClass = 'fa-check-circle';
+      if (type === 'warning') iconClass = 'fa-exclamation-circle';
+      if (type === 'error') iconClass = 'fa-times-circle';
+
+      line.innerHTML = `
       <i class="fa-solid ${iconClass}"></i>
       <span>${text}</span>
     `;
-    consoleEl.appendChild(line);
-    consoleEl.scrollTop = consoleEl.scrollHeight;
-  }
+      consoleEl.appendChild(line);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
 
-  function startProcessing() {
-    if (!selectedFile) return;
+    function startProcessing() {
+      if (!selectedFile) return;
 
-    // Reset console
-    consoleEl.innerHTML = '';
-    addLog('info', 'Démarrage du traitement...');
-    runBtn.disabled = true;
+      // Reset console
+      consoleEl.innerHTML = '';
+      addLog('info', 'Démarrage du traitement...');
+      runBtn.disabled = true;
 
-    const formData = new FormData();
-    formData.append('file', selectedFile);
+      const formData = new FormData();
+      formData.append('file', selectedFile);
 
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/process', true);
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/process', true);
 
-    let lastPos = 0;
+      let lastPos = 0;
 
-    xhr.onprogress = () => {
-      const text = xhr.responseText.slice(lastPos);
-      lastPos = xhr.responseText.length;
+      xhr.onprogress = () => {
+        const text = xhr.responseText.slice(lastPos);
+        lastPos = xhr.responseText.length;
 
-      // Parse SSE chunks
-      const blocks = text.split('\n\n');
-      blocks.forEach(block => {
-        if (!block.trim()) return;
-        const eventMatch = block.match(/event:\s*(\w+)/);
-        const dataMatch  = block.match(/data:\s*(.+)/);
-        if (!eventMatch || !dataMatch) return;
+        // Parse SSE chunks
+        const blocks = text.split('\n\n');
+        blocks.forEach(block => {
+          if (!block.trim()) return;
+          const eventMatch = block.match(/event:\s*(\w+)/);
+          const dataMatch = block.match(/data:\s*(.+)/);
+          if (!eventMatch || !dataMatch) return;
 
-        const type = eventMatch[1];
-        const msg  = dataMatch[1];
+          const type = eventMatch[1];
+          const msg = dataMatch[1];
 
-        // Traduire le type SSE interne Flask en types de logs
-        let logType = 'info';
-        if (type === 'success' || type === 'done') logType = 'success';
-        if (type === 'warning') logType = 'warning';
-        if (type === 'error') logType = 'error';
+          // Traduire le type SSE interne Flask en types de logs
+          let logType = 'info';
+          if (type === 'success' || type === 'done') logType = 'success';
+          if (type === 'warning') logType = 'warning';
+          if (type === 'error') logType = 'error';
 
-        addLog(logType, msg);
-      });
-    };
+          addLog(logType, msg);
+        });
+      };
 
-    xhr.onload = () => {
-      runBtn.disabled = false;
-      addLog('info', 'Processus terminé.');
-    };
+      xhr.onload = () => {
+        runBtn.disabled = false;
+        addLog('info', 'Processus terminé.');
+      };
 
-    xhr.onerror = () => {
-      runBtn.disabled = false;
-      addLog('error', 'Impossible de se connecter au serveur.');
-    };
+      xhr.onerror = () => {
+        runBtn.disabled = false;
+        addLog('error', 'Impossible de se connecter au serveur.');
+      };
 
-    xhr.send(formData);
-  }
-</script>
+      xhr.send(formData);
+    }
+  </script>
 </body>
+
 </html>
