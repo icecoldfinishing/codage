@@ -5,6 +5,38 @@
 #include <math.h>
 #include "wav_dsp.h"
 
+/*
+ * Réduit la fréquence d'échantillonnage d'un fichier WAV par 2 (downsampling).
+ *
+ * Principe :
+ * - Parcourt les données audio deux frames à la fois.
+ * - Génère une seule frame de sortie pour chaque paire.
+ * - Le traitement est appliqué indépendamment sur chaque canal.
+ *
+ * Modes disponibles :
+ * - use_max_pair = false :
+ *      calcule la moyenne des deux échantillons successifs
+ *      → résultat plus lisse.
+ *
+ * - use_max_pair = true :
+ *      conserve l'échantillon ayant la plus grande amplitude
+ *      → préserve davantage les pics du signal.
+ *
+ * Mise à jour du fichier :
+ * - Divise SampleRate par 2.
+ * - Recalcule ByteRate.
+ * - Conserve le même nombre de canaux et la même quantification.
+ * - Reconstruit un nouveau fichier WAV valide dans dst.
+ *
+ * Paramètres :
+ *   src  : fichier WAV source
+ *   dst  : fichier WAV résultat
+ *   use_max_pair : choix de l'algorithme de réduction
+ *
+ * Retour :
+ *   0  → succès
+ *  -1 → erreur (paramètres invalides ou allocation échouée)
+ */
 int wav_downsample_by_2(const WavAudio* src, WavAudio* dst, bool use_max_pair) {
     if (src == NULL || dst == NULL || src->bytes == NULL) {
         return -1;
