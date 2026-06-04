@@ -40,8 +40,8 @@ static int run_wav_tp(const char* input_path) {
             printf("Echec: impossible de generer une source de secours.\n");
             goto cleanup_fail;
         }
-        if (wav_write_file(&source, "etape00_source_synthetique.wav") == 0) {
-            printf("Cree: etape00_source_synthetique.wav\n");
+        if (wav_write_file(&source, "outputs/etape00_source_synthetique.wav") == 0) {
+            printf("Cree: outputs/etape00_source_synthetique.wav\n");
         }
     }
 
@@ -58,12 +58,12 @@ static int run_wav_tp(const char* input_path) {
     bool has_decompressed = false;
 
     if (wav_compress_alaw(&source, &step_comp_alaw) == 0) {
-        wav_write_file(&step_comp_alaw, "etape02_compressed_alaw.wav");
-        printf("Compression A-law : Cree etape02_compressed_alaw.wav (Taille donnees: %u octets, gain de place: 50.0%%)\n", step_comp_alaw.data_size);
+        wav_write_file(&step_comp_alaw, "outputs/etape02_compressed_alaw.wav");
+        printf("Compression A-law : Cree outputs/etape02_compressed_alaw.wav (Taille donnees: %u octets, gain de place: 50.0%%)\n", step_comp_alaw.data_size);
 
         if (wav_decompress_alaw(&step_comp_alaw, &step_decomp_alaw) == 0) {
-            wav_write_file(&step_decomp_alaw, "etape02_decompressed_alaw.wav");
-            printf("Decompression A-law : Cree etape02_decompressed_alaw.wav (Reconstruction PCM 16-bits)\n");
+            wav_write_file(&step_decomp_alaw, "outputs/etape02_decompressed_alaw.wav");
+            printf("Decompression A-law : Cree outputs/etape02_decompressed_alaw.wav (Reconstruction PCM 16-bits)\n");
             has_decompressed = true;
         }
     } else {
@@ -71,20 +71,20 @@ static int run_wav_tp(const char* input_path) {
     }
 
     if (wav_compress_mulaw(&source, &step_comp_mulaw) == 0) {
-        wav_write_file(&step_comp_mulaw, "etape02_compressed_mulaw.wav");
-        printf("Compression mu-law : Cree etape02_compressed_mulaw.wav (Taille donnees: %u octets, gain de place: 50.0%%)\n", step_comp_mulaw.data_size);
+        wav_write_file(&step_comp_mulaw, "outputs/etape02_compressed_mulaw.wav");
+        printf("Compression mu-law : Cree outputs/etape02_compressed_mulaw.wav (Taille donnees: %u octets, gain de place: 50.0%%)\n", step_comp_mulaw.data_size);
 
         if (wav_decompress_mulaw(&step_comp_mulaw, &step_decomp_mulaw) == 0) {
-            wav_write_file(&step_decomp_mulaw, "etape02_decompressed_mulaw.wav");
-            printf("Decompression mu-law : Cree etape02_decompressed_mulaw.wav (Reconstruction PCM 16-bits)\n");
+            wav_write_file(&step_decomp_mulaw, "outputs/etape02_decompressed_mulaw.wav");
+            printf("Decompression mu-law : Cree outputs/etape02_decompressed_mulaw.wav (Reconstruction PCM 16-bits)\n");
         }
     } else {
         printf("Compression mu-law ignoree (requiert une source 16-bits PCM).\n");
     }
 
     if (wav_dynamic_range_compress(&source, &step_drc, -12.0, 4.0, 3.0) == 0) {
-        wav_write_file(&step_drc, "etape02_dynamic_compression.wav");
-        printf("Compression de dynamique (DRC) : Cree etape02_dynamic_compression.wav (Seuil=-12dB, Ratio=4:1, Makeup=+3dB)\n");
+        wav_write_file(&step_drc, "outputs/etape02_dynamic_compression.wav");
+        printf("Compression de dynamique (DRC) : Cree outputs/etape02_dynamic_compression.wav (Seuil=-12dB, Ratio=4:1, Makeup=+3dB)\n");
     } else {
         printf("Compression de dynamique ignoree (requiert une source PCM).\n");
     }
@@ -102,15 +102,15 @@ static int run_wav_tp(const char* input_path) {
     printf("\n--- Modification et traitement du signal ---\n");
 
     if (wav_downsample_by_2(working_source, &step_downsample, false) == 0) {
-        wav_write_file(&step_downsample, "etape03_downsample_x2.wav");
-        printf("Etape 3 (Sous-echantillonnage) : Cree etape03_downsample_x2.wav\n");
+        wav_write_file(&step_downsample, "outputs/etape03_downsample_x2.wav");
+        printf("Etape 3 (Sous-echantillonnage) : Cree outputs/etape03_downsample_x2.wav\n");
     } else {
         printf("Etape 3 ignoree (format non supporte).\n");
     }
 
     if (wav_quantize_16_to_8(working_source, &step_quantize) == 0) {
-        wav_write_file(&step_quantize, "etape04_quantization_8bit.wav");
-        printf("Etape 4 (Quantification 8 bits) : Cree etape04_quantization_8bit.wav\n");
+        wav_write_file(&step_quantize, "outputs/etape04_quantization_8bit.wav");
+        printf("Etape 4 (Quantification 8 bits) : Cree outputs/etape04_quantization_8bit.wav\n");
     } else {
         printf("Etape 4 ignoree : source non 16 bits PCM.\n");
     }
@@ -122,13 +122,13 @@ static int run_wav_tp(const char* input_path) {
         wav_print_stats("Etape 5 (Saturation soft-clip)", &sat);
         wav_normalize_inplace(&step_process, 0.95, &norm);
         wav_print_stats("Etape 6 (Normalisation)", &norm);
-        wav_write_file(&step_process, "etape05_06_dessat_norm.wav");
-        printf("Etapes 5-6 : Cree etape05_06_dessat_norm.wav\n");
+        wav_write_file(&step_process, "outputs/etape05_06_dessat_norm.wav");
+        printf("Etapes 5-6 : Cree outputs/etape05_06_dessat_norm.wav\n");
     }
 
     if (wav_extract_left_channel(working_source, &step_left) == 0) {
-        wav_write_file(&step_left, "etape07_left_channel.wav");
-        printf("Etape 7 (Extraction canal gauche) : Cree etape07_left_channel.wav\n");
+        wav_write_file(&step_left, "outputs/etape07_left_channel.wav");
+        printf("Etape 7 (Extraction canal gauche) : Cree outputs/etape07_left_channel.wav\n");
     } else {
         printf("Etape 7 ignoree : source non stereo.\n");
     }
@@ -137,26 +137,26 @@ static int run_wav_tp(const char* input_path) {
     printf("\n--- Multicanaux ---\n");
 
     if (wav_stereo_to_2_1(working_source, &step_21, true) == 0) {
-        wav_write_file(&step_21, "etape11_stereo_to_2_1.wav");
-        printf("Etape 11 (Stereo vers 2.1) : Cree etape11_stereo_to_2_1.wav\n");
+        wav_write_file(&step_21, "outputs/etape11_stereo_to_2_1.wav");
+        printf("Etape 11 (Stereo vers 2.1) : Cree outputs/etape11_stereo_to_2_1.wav\n");
     } else {
         printf("Etape 11 ignoree : source non stereo.\n");
     }
 
     if (wav_stereo_to_5_1(working_source, &step_51) == 0) {
-        wav_write_file(&step_51, "etape12_stereo_to_5_1.wav");
-        printf("Etape 12 (Stereo vers 5.1) : Cree etape12_stereo_to_5_1.wav\n");
+        wav_write_file(&step_51, "outputs/etape12_stereo_to_5_1.wav");
+        printf("Etape 12 (Stereo vers 5.1) : Cree outputs/etape12_stereo_to_5_1.wav\n");
     } else {
         printf("Etape 12 ignoree : source non stereo.\n");
     }
 
     if (wav_generate_sine_5_1_travel(&step_synth, 48000, 16, 1.0, 440.0) == 0) {
-        wav_write_file(&step_synth, "etape13_synth_5_1_travel.wav");
-        printf("Etape 13 (Synthese 5.1 spatiale) : Cree etape13_synth_5_1_travel.wav\n");
+        wav_write_file(&step_synth, "outputs/etape13_synth_5_1_travel.wav");
+        printf("Etape 13 (Synthese 5.1 spatiale) : Cree outputs/etape13_synth_5_1_travel.wav\n");
     }
 
     printf("\nEtape 10 (test auditif) : lecture du fichier de synthese...\n");
-    if (wav_play_file_simple("etape13_synth_5_1_travel.wav") != 0) {
+    if (wav_play_file_simple("outputs/etape13_synth_5_1_travel.wav") != 0) {
         printf("Lecture non disponible automatiquement sur cet environnement.\n");
     }
 

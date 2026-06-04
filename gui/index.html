@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WAV Processor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <!-- FontAwesome pour les icônes propres -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    :root {
+      --bg-900: #0b0f19;
+      --bg-800: #111827;
+      --bg-700: #1f2937;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --text-primary: #f3f4f6;
+      --text-secondary: #9ca3af;
+      --border: rgba(255, 255, 255, 0.1);
+      --radius: 8px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-900);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 600px;
+      background: var(--bg-800);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h1 i {
+      color: var(--accent);
+    }
+
+    /* Sélecteur de fichier */
+    .file-select {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .file-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .file-input-wrapper {
+      position: relative;
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .file-input-wrapper:hover {
+      background: rgba(99, 102, 241, 0.05);
+      border-color: var(--accent);
+    }
+
+    .file-input-wrapper input[type="file"] {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .file-info {
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--text-secondary);
+    }
+
+    .file-info i {
+      font-size: 18px;
+    }
+
+    .file-info.has-file {
+      color: var(--text-primary);
+    }
+
+    /* Bouton principal */
+    button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: var(--radius);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--accent);
+      color: #fff;
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    button:hover:not(:disabled) {
+      background: var(--accent-hover);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Console de Log */
+    .console {
+      background: var(--bg-900);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      height: 250px;
+      overflow-y: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .console::-webkit-scrollbar {
+      width: 4px;
+    }
+    .console::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 2px;
+    }
+
+    .log-line {
+      display: flex;
+      gap: 8px;
+      line-height: 1.5;
+    }
+
+    .log-line.error { color: #f87171; }
+    .log-line.warning { color: #fbbf24; }
+    .log-line.success { color: #34d399; }
+    .log-line.info { color: #60a5fa; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1><i class="fa-solid fa-compact-disc"></i> WAV Processor</h1>
+
+  <div class="file-select">
+    <div class="file-label">Fichier audio WAV</div>
+    <div class="file-input-wrapper">
+      <input type="file" id="file-input" accept=".wav" onchange="handleFileChange(this)" />
+      <div class="file-info" id="file-info">
+        <i class="fa-solid fa-file-audio"></i>
+        <span>Cliquez pour choisir un fichier .wav</span>
+      </div>
+    </div>
+  </div>
+
+  <button id="run-btn" disabled onclick="startProcessing()">
+    <i class="fa-solid fa-play"></i> Lancer le traitement
+  </button>
+
+  <div class="console" id="console">
+    <div class="log-line info">
+      <span>[système]</span> En attente d'un fichier WAV...
+    </div>
+  </div>
+</div>
+
+<script>
+  let selectedFile = null;
+  const consoleEl = document.getElementById('console');
+  const runBtn = document.getElementById('run-btn');
+  const fileInfo = document.getElementById('file-info');
+
+  function handleFileChange(input) {
+    const file = input.files[0];
+    if (file) {
+      selectedFile = file;
+      runBtn.disabled = false;
+      fileInfo.classList.add('has-file');
+      fileInfo.querySelector('span').textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+      addLog('info', `Fichier sélectionné : ${file.name}`);
+    } else {
+      selectedFile = null;
+      runBtn.disabled = true;
+      fileInfo.classList.remove('has-file');
+      fileInfo.querySelector('span').textContent = 'Cliquez pour choisir un fichier .wav';
+    }
+  }
+
+  function addLog(type, text) {
+    const line = document.createElement('div');
+    line.className = `log-line ${type}`;
+    
+    let iconClass = 'fa-info-circle';
+    if (type === 'success') iconClass = 'fa-check-circle';
+    if (type === 'warning') iconClass = 'fa-exclamation-circle';
+    if (type === 'error') iconClass = 'fa-times-circle';
+
+    line.innerHTML = `
+      <i class="fa-solid ${iconClass}"></i>
+      <span>${text}</span>
+    `;
+    consoleEl.appendChild(line);
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+  }
+
+  function startProcessing() {
+    if (!selectedFile) return;
+
+    // Reset console
+    consoleEl.innerHTML = '';
+    addLog('info', 'Démarrage du traitement...');
+    runBtn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/process', true);
+
+    let lastPos = 0;
+
+    xhr.onprogress = () => {
+      const text = xhr.responseText.slice(lastPos);
+      lastPos = xhr.responseText.length;
+
+      // Parse SSE chunks
+      const blocks = text.split('\n\n');
+      blocks.forEach(block => {
+        if (!block.trim()) return;
+        const eventMatch = block.match(/event:\s*(\w+)/);
+        const dataMatch  = block.match(/data:\s*(.+)/);
+        if (!eventMatch || !dataMatch) return;
+
+        const type = eventMatch[1];
+        const msg  = dataMatch[1];
+
+        // Traduire le type SSE interne Flask en types de logs
+        let logType = 'info';
+        if (type === 'success' || type === 'done') logType = 'success';
+        if (type === 'warning') logType = 'warning';
+        if (type === 'error') logType = 'error';
+
+        addLog(logType, msg);
+      });
+    };
+
+    xhr.onload = () => {
+      runBtn.disabled = false;
+      addLog('info', 'Processus terminé.');
+    };
+
+    xhr.onerror = () => {
+      runBtn.disabled = false;
+      addLog('error', 'Impossible de se connecter au serveur.');
+    };
+
+    xhr.send(formData);
+  }
+</script>
+</body>
+</html>

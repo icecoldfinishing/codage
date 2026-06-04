@@ -1,3 +1,12 @@
+# Interface Graphique (GUI) avec Docker Compose
+# Lancez la commande suivante depuis la racine du projet :
+docker compose up --build
+
+# Ouvrez ensuite votre navigateur sur http://localhost:5000
+
+---
+
+# Exécution en ligne de commande (Docker)
 docker build -t codage .
 
 # Lance avec l'argument par defaut (input.wav)
