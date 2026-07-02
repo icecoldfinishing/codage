@@ -87,14 +87,14 @@ def process():
 
             proc.wait()
             if proc.returncode == 0:
-                yield _sse("done", "✅ Traitement terminé avec succès")
+                yield _sse("done", "Traitement terminé avec succès")
             else:
-                yield _sse("error", f"❌ Erreur : code de sortie {proc.returncode}")
+                yield _sse("error", f"Erreur : code de sortie {proc.returncode}")
 
         except FileNotFoundError:
-            yield _sse("error", f"❌ Binaire introuvable : {BINARY}. Compilez d'abord avec make ou Docker.")
+            yield _sse("error", f"Binaire introuvable : {BINARY}. Compilez d'abord avec make ou Docker.")
         except Exception as e:
-            yield _sse("error", f"❌ Exception inattendue : {str(e)}")
+            yield _sse("error", f"Exception inattendue : {str(e)}")
 
     return Response(generate(), mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
