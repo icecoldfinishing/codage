@@ -1,15 +1,8 @@
-
 FROM gcc:15.2
 
-# On définit le dossier de travail à l'intérieur du conteneur
 WORKDIR /app
 
-# On copie les fichiers sources dans le conteneur
-COPY . .
+# Installation de make (optionnel mais pratique)
+RUN apt-get update && apt-get install -y make && rm -rf /var/lib/apt/lists/*
 
-# On compile le projet
-RUN gcc -O2 -mavx2 -msse4.1 -Iinclude -o /usr/local/bin/codage src/main.c src/bases.c src/simd_utils.c src/conversions.c src/wav_core.c src/wav_dsp.c src/wav_compression.c -lm
-# Entrypoint: les arguments passes a `docker run codage ...` sont transmis au binaire.
-ENTRYPOINT ["/usr/local/bin/codage"]
-
-CMD ["input.wav"]
+CMD ["bash"]

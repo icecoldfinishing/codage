@@ -1,12 +1,26 @@
 version: '3.8'
 
 services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    working_dir: /app
+
+    volumes:
+      - .:/app
+
+    stdin_open: true
+    tty: true
+
   gui:
     build:
       context: .
       dockerfile: gui/Dockerfile
+
     ports:
       - "5000:5000"
+
     volumes:
-      - ./outputs:/app/outputs
-      - ./gui:/app/gui
+      - .:/app

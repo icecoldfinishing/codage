@@ -1,0 +1,82 @@
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+#include "resolution.h"
+
+int main(int argc, char** argv) {
+
+    // --- Initialisation standard ---
+    printf("--- TEST DE LANCEMENT ---\n");
+    fflush(stdout);
+
+    // --- Exercice 0 : Conversion en base dynamique ---
+    conversion_base(0b110101001, 8);
+
+    // --- Exercice 1 : Décodage et Encodage ---
+    decodage(0xB2);
+    encodage("ATEA");
+
+    printf("--- TESTS SIMD (EXERCICES 2 & 3) ---\n");
+
+    uint8_t tableau_A[32], tableau_B[32], resultat[32];
+
+    for (int i = 0; i < 32; i++) {
+        tableau_A[i] = i * 2;
+        tableau_B[i] = 30;
+    }
+
+    simd(tableau_A, tableau_B, resultat, 32);
+
+    printf("Resultat SIMD:\n");
+    for (int i = 0; i < 32; i++) {
+        if (i % 8 == 0) printf("\n  ");
+        printf("%02X ", resultat[i]);
+    }
+    printf("\n");
+
+    uint8_t chaine[16] = "Hello\0World!!";
+    int index_zero = localiser_premier_zero_simd(chaine);
+    printf("Premier '\\0' a l'index : %d\n", index_zero);
+
+    int index_caractere = rechercher_caractere_simd(chaine, 'W');
+    printf("Caractere 'W' trouve a l'index : %d\n", index_caractere);
+
+    printf("\n--- EXERCICE 4 : CONVERSIONS ---\n");
+
+    ConvertisseurNumerique conv;
+    convertisseur_init(&conv, 8, 1e-6);
+
+    int16_t valeur_signee = -37;
+
+    uint16_t code_msb = convertir_vers_signed_msb(&conv, valeur_signee);
+    int16_t retour_signee = convertir_depuis_signed_msb(&conv, code_msb);
+
+    printf("Signed MSB: %d -> 0x%X -> %d\n",
+           valeur_signee, code_msb, retour_signee);
+
+    if (entier_relatif_vers_base(&conv, valeur_signee, 2, conv.buffer, BINAIRE_BUFFER_TAILLE))
+        printf("Base 2 : %s\n", conv.buffer);
+
+    if (entier_relatif_vers_base(&conv, valeur_signee, 8, conv.buffer, BINAIRE_BUFFER_TAILLE))
+        printf("Base 8 : %s\n", conv.buffer);
+
+    if (entier_relatif_vers_base(&conv, valeur_signee, 16, conv.buffer, BINAIRE_BUFFER_TAILLE))
+        printf("Base 16 : %s\n", conv.buffer);
+
+    float valeur_float = -13.625f;
+
+    IEEE754Simple ieee = decomposer_ieee754_simple_precision(valeur_float);
+
+    char ieee_bits[40];
+
+    if (ieee754_simple_precision_vers_binaire_1_8_23(valeur_float, ieee_bits, sizeof(ieee_bits)))
+        printf("IEEE754: %s\n", ieee_bits);
+
+    printf("Signe: %u | Exposant: %u | Mantisse: %u\n",
+           ieee.signe, ieee.exposant_biase, ieee.mantisse);
+
+    if (decimal_vers_binaire(&conv, 10.625, conv.buffer, BINAIRE_BUFFER_TAILLE))
+        printf("Decimal -> binaire: %s\n", conv.buffer);
+
+    return 0;
+}
